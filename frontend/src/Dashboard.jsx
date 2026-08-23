@@ -20,6 +20,22 @@ export default function Dashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedHospital, setSelectedHospital] = useState('');
 
+  // 🎨 ฟังก์ชันกำหนดสีหัวการ์ดตามกรุ๊ปเลือด
+  const getGroupHeaderStyle = (group) => {
+    switch (group) {
+      case 'A':
+        return 'bg-amber-400 text-white';    // สีเหลือง + ตัวอักษรสีขาว
+      case 'B':
+        return 'bg-pink-500 text-white';     // สีชมพู
+      case 'O':
+        return 'bg-sky-500 text-white';      // สีฟ้า
+      case 'AB':
+        return 'bg-white text-slate-800 border-b border-slate-100'; // สีขาว
+      default:
+        return 'bg-slate-700 text-white';
+    }
+  };
+
   // ----------------------------------------------------
   // 1. ดึงข้อมูลทั้งหมดจาก Supabase
   // ----------------------------------------------------
@@ -27,7 +43,6 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1.1 ดึงตารางอ้างอิงสถานที่
         const [regRes, provRes, distRes, hospRes] = await Promise.all([
           supabase.from('regions').select('*'),
           supabase.from('provinces').select('*'),
@@ -35,7 +50,6 @@ export default function Dashboard() {
           supabase.from('hospitals').select('*')
         ]);
 
-        // กำหนดข้อมูลภูมิภาคมาตรฐาน (กรณีตาราง regions ว่าง)
         const defaultRegions = [
           { region_id: '1', region_name: 'ภาคเหนือ' },
           { region_id: '2', region_name: 'ภาคกลาง' },
@@ -50,7 +64,6 @@ export default function Dashboard() {
         setDistricts(distRes.data || []);
         setHospitals(hospRes.data || []);
 
-        // 1.2 ดึงรายการ blood_inventory ทั้งหมด (Loop Pagination ดึงครบทุกแถวไม่ติด Limit 1,000)
         let allBloodRecords = [];
         let pageFrom = 0;
         const pageSize = 1000;
@@ -84,25 +97,21 @@ export default function Dashboard() {
   }, []);
 
   // ----------------------------------------------------
-  // 2. สร้าง Lookup & Auto-Extract กรณี DB ตารางจังหวัด/อำเภอว่าง
+  // 2. Lookup & Auto-Extract
   // ----------------------------------------------------
-  
-  // รายการจังหวัด (ถ้าตาราง provinces ว่าง ให้ดึงรหัส/ชื่อจังหวัดที่มีในตาราง hospitals มาแสดง)
   const availableProvinces = useMemo(() => {
     if (provinces.length > 0) {
       if (!selectedRegion) return provinces;
       return provinces.filter(p => String(p.region_id) === String(selectedRegion));
     }
     
-    // Fallback: ดึง province_id ที่มีจาก hospitals
     const uniqueProvIds = Array.from(new Set(hospitals.map(h => h.province_id).filter(Boolean)));
     return uniqueProvIds.map(id => ({
       province_id: id,
-      province_name: id // แสดง ID หรือชื่อ
+      province_name: id
     }));
   }, [provinces, selectedRegion, hospitals]);
 
-  // รายการอำเภอ (ถ้าตาราง districts ว่าง ให้ดึงรหัส/ชื่ออำเภอที่มีในตาราง hospitals มาแสดง)
   const availableDistricts = useMemo(() => {
     let sourceDistricts = districts;
 
@@ -113,7 +122,6 @@ export default function Dashboard() {
       return sourceDistricts;
     }
 
-    // Fallback: ดึง district_id จาก hospitals
     let filteredHosps = hospitals;
     if (selectedProvince) {
       filteredHosps = filteredHosps.filter(h => String(h.province_id) === String(selectedProvince));
@@ -125,7 +133,6 @@ export default function Dashboard() {
     }));
   }, [districts, selectedProvince, hospitals]);
 
-  // รายการโรงพยาบาลที่ผันแปรตามตัวกรอง
   const availableHospitals = useMemo(() => {
     return hospitals.filter(h => {
       if (selectedDistrict && String(h.district_id) !== String(selectedDistrict)) return false;
@@ -134,11 +141,9 @@ export default function Dashboard() {
     });
   }, [hospitals, selectedDistrict, selectedProvince]);
 
-  // Map ข้อมูลโรงพยาบาลสำหรับนำไปกรอง blood_inventory
   const hospitalMap = useMemo(() => {
     const map = {};
     hospitals.forEach(h => {
-      // หา region_id จาก province
       const provObj = provinces.find(p => String(p.province_id) === String(h.province_id));
       map[h.hospital_id] = {
         ...h,
@@ -173,7 +178,7 @@ export default function Dashboard() {
   }, [inventory, hospitalMap, selectedHospital, selectedDistrict, selectedProvince, selectedRegion]);
 
   // ----------------------------------------------------
-  // 4. สถิติต่างๆ (Total Unit, Available, Expiring)
+  // 4. คำนวณสถิติ
   // ----------------------------------------------------
   const expiringUnits = useMemo(() => {
     const today = new Date();
@@ -233,7 +238,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans p-4">
       
-      {/* 📍 1. ตัวกรองพื้นที่ Dropdowns */}
+      {/* 📍 1. ตัวกรองพื้นที่ */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-4">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-700 whitespace-nowrap min-w-[110px]">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -244,8 +249,6 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full text-xs">
-          
-          {/* ภาค (Regions) */}
           <select
             value={selectedRegion}
             onChange={(e) => {
@@ -264,7 +267,6 @@ export default function Dashboard() {
             ))}
           </select>
 
-          {/* จังหวัด (Provinces) */}
           <select
             value={selectedProvince}
             onChange={(e) => {
@@ -282,7 +284,6 @@ export default function Dashboard() {
             ))}
           </select>
 
-          {/* อำเภอ (Districts) */}
           <select
             value={selectedDistrict}
             onChange={(e) => {
@@ -299,7 +300,6 @@ export default function Dashboard() {
             ))}
           </select>
 
-          {/* โรงพยาบาล (Hospitals) */}
           <select
             value={selectedHospital}
             onChange={(e) => setSelectedHospital(e.target.value)}
@@ -312,11 +312,10 @@ export default function Dashboard() {
               </option>
             ))}
           </select>
-
         </div>
       </div>
 
-      {/* 📊 2. สรุปยอด Total Unit / Available / Expiring Soon */}
+      {/* 📊 2. สรุปยอด */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
           <h3 className="text-sm font-bold text-slate-800">Total Unit</h3>
@@ -367,12 +366,12 @@ export default function Dashboard() {
             const totalGroup = posCount + negCount;
 
             return (
-              <div key={group} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="bg-[#BA1A1A] py-2.5 text-center text-white font-black text-xl tracking-wider">
+              <div key={group} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                <div className={`py-2.5 text-center font-black text-xl tracking-wider ${getGroupHeaderStyle(group)}`}>
                   {group}
                 </div>
                 
-                <div className="p-5">
+                <div className="p-5 bg-slate-50 flex-1">
                   <div className="flex items-baseline gap-2 mb-4">
                     <span className="text-3xl font-black text-slate-800">
                       {loading ? '...' : totalGroup.toLocaleString()}
@@ -380,7 +379,7 @@ export default function Dashboard() {
                     <span className="text-[11px] text-slate-400 font-bold uppercase">UNITS</span>
                   </div>
 
-                  <div className="space-y-2 text-xs pt-3 border-t border-slate-100">
+                  <div className="space-y-2 text-xs pt-3 border-t border-slate-200/60">
                     <div className="flex justify-between items-center font-medium">
                       <span className="text-slate-600">{group}+</span>
                       <span className="font-bold text-slate-800">{loading ? '...' : posCount.toLocaleString()}</span>
