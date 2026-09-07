@@ -206,7 +206,7 @@ export default function Auth({ onLoginSuccess }) {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="เช่น Suriyalak88"
+                  placeholder="Username"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-red-500 font-bold text-slate-800"
                 />
               </div>
@@ -218,7 +218,7 @@ export default function Auth({ onLoginSuccess }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Password"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-red-500 font-bold text-slate-800"
                 />
               </div>
@@ -254,7 +254,7 @@ export default function Auth({ onLoginSuccess }) {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="เช่น Suriyalak88"
+                  placeholder="Username"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-red-500 font-bold text-slate-800"
                 />
               </div>
@@ -272,7 +272,7 @@ export default function Auth({ onLoginSuccess }) {
               </div>
 
               <div>
-                <label className="block text-slate-600 mb-1">แผนก / ชุมชน (Department)</label>
+                <label className="block text-slate-600 mb-1">แผนก (Department)</label>
                 <input
                   type="text"
                   required
@@ -305,7 +305,7 @@ export default function Auth({ onLoginSuccess }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="อย่างน้อย 6 ตัวอักษร"
+                  placeholder="อย่างน้อย 8 ตัวอักษร"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-red-500 font-bold text-slate-800"
                 />
               </div>
