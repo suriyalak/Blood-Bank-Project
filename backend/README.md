@@ -20,9 +20,9 @@
 สร้างไฟล์ `.env` ไว้ที่โฟลเดอร์ `backend/` โดยระบุค่าดังนี้:
 
 ```env
-DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.sxufilpozwqfhjhhwvxo.supabase.co:5432/postgres
-SUPABASE_URL=https://sxufilpozwqfhjhhwvxo.supabase.co
-SUPABASE_KEY=sb_publishable_sAhfJtEaSv4T08NZFXj44A_aB0txngO
-SECRET_KEY=sb_secret_Owy5sUYeQBUCwc7AD1YjTw_HabR5Fl_
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<dbname>
+SUPABASE_URL=https://<your-supabase-project-id>.supabase.co
+SUPABASE_KEY=<your-supabase-service-role-key>
+SECRET_KEY=<your-jwt-secret-key>
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
