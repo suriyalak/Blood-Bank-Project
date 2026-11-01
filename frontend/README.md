@@ -1,16 +1,23 @@
-# React + Vite
+# 🩸 Blood Bank Management System - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ส่วนแสดงผลหน้าเว็บ (Frontend) ของระบบบริหารจัดการคลังเลือด พัฒนาด้วย **React (Vite)** เชื่อมต่อข้อมูลการทำ CRUD คลังเลือดกับ **Supabase REST API** โดยตรง และเชื่อมต่อกับ **FastAPI Backend** สำหรับฟีเจอร์ประมวลผลพิเศษ
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Tech Stack & Dependencies
 
-## React Compiler
+- **Core Framework:** React (Vite)
+- **Database Client:** `@supabase/supabase-js`
+- **State & Router:** React Router DOM (ถ้ามี)
+- **HTTP Client:** Fetch API / Axios
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## ⚙️ Environment Variables Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+สร้างไฟล์ `.env` ไว้ที่โฟลเดอร์ `frontend/` โดยระบุค่าดังนี้:
+
+```env
+VITE_SUPABASE_URL=https://hdfzmgabkyomskifgvli.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_r3BE5gt0BBSLS2Pz-uVniA_h14899Sl
+VITE_API_BASE_URL=http://127.0.0.1:8000
