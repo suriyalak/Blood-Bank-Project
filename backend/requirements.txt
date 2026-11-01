@@ -1,5 +1,7 @@
-fastapi==0.115.8
-uvicorn==0.34.0
-pandas==2.1.4
-python-multipart==0.0.20
-scikit-learn
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+pandas==2.2.2
+scikit-learn==1.4.2
