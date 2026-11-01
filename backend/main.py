@@ -51,6 +51,10 @@ class UserRegisterSchema(BaseModel):
     Department: str
     Hospital_ID: str
 
+# เพิ่ม Schema
+class StatusUpdate(BaseModel):
+    status: str
+
 class UserLoginSchema(BaseModel):
     Username: str
     Password: str
