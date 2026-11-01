@@ -8,3 +8,4 @@ scikit-learn==1.4.2
 supabase
 python-jose[cryptography]
 passlib[bcrypt]
+email-validator
