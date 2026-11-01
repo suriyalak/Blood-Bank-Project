@@ -1,32 +1,58 @@
 import pandas as pd
-from datetime import datetime
-
-CSV_PATH = "data/blood.csv"
-
-
-def get_all_blood():
-
-    df = pd.read_csv(CSV_PATH)
-
-    return df.to_dict(orient="records")
+from datetime import datetime, timedelta, date
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from models.blood_model import BloodInventory  # เรียกใช้ Model ที่ตรงกับ Supabase 14 คอลัมน์
 
 
-def get_summary():
+def item_to_dict(item: BloodInventory) -> dict:
+    """แปลงข้อมูล ORM จาก Supabase ให้เป็น Dictionary รองรับทั้งฟิลด์เก่า (CSV) และฟิลด์ใหม่ (DB)"""
+    if not item:
+        return {}
+    return {
+        "id": item.inventory_id,
+        "inventory_id": item.inventory_id,
+        "unit_no": item.unit_no,
+        "blood_group": item.blood_group,
+        "rh": item.rh_id,
+        "rh_id": item.rh_id,
+        "status": item.status,
+        "province": item.donation_location,
+        "donation_location": item.donation_location,
+        "product_type": item.component_id,
+        "component_id": item.component_id,
+        "patient_hn": item.patient_hn,
+        "recipient_name": item.recipient_name,
+        "dispensed_at": item.dispensed_at.isoformat() if item.dispensed_at else None,
+        "expiry_date": item.expiry_date.strftime("%Y-%m-%d") if item.expiry_date else None,
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "hospital_id": item.hospital_id,
+        "user_id": item.user_id,
+    }
 
-    df = pd.read_csv(CSV_PATH)
 
-    total = len(df)
+def get_all_blood(db: Session):
+    """ดึงรายการเลือดทั้งหมดจาก Supabase"""
+    items = db.query(BloodInventory).all()
+    return [item_to_dict(item) for item in items]
 
-    today = datetime.today()
 
-    df["expiry_date"] = pd.to_datetime(df["expiry_date"])
+def get_summary(db: Session):
+    """สรุปจำนวนถุงเลือดทั้งหมด และจำนวนถุงเลือดที่ใกล้หมดอายุ (ภายใน 15 วัน)"""
+    total = db.query(BloodInventory).count()
 
-    df["days_left"] = (
-        df["expiry_date"] - today
-    ).dt.days
+    today = date.today()
+    expiring_threshold = today + timedelta(days=15)
 
-    expiring = len(
-        df[df["days_left"] <= 15]
+    # ค้นหาถุงเลือดที่วันหมดอายุอยู่นับจากวันนี้ไปไม่เกิน 15 วัน และยังไม่ถูกเบิกจ่าย
+    expiring = (
+        db.query(BloodInventory)
+        .filter(
+            BloodInventory.expiry_date.isnot(None),
+            BloodInventory.expiry_date <= expiring_threshold,
+            BloodInventory.expiry_date >= today,
+        )
+        .count()
     )
 
     return {
@@ -36,160 +62,112 @@ def get_summary():
 
 
 def filter_bloods(
+    db: Session,
     province=None,
     blood_group=None,
     product_type=None,
     rh=None,
     expiry_days=None,
 ):
+    """กรองรายการถุงเลือดจาก Supabase ตามเงื่อนไขต่าง ๆ"""
+    query = db.query(BloodInventory)
 
-    df = pd.read_csv(CSV_PATH)
-
-    # Province
+    # Province / Location
     if province:
-        df = df[
-            df["province"] == province
-        ]
+        query = query.filter(BloodInventory.donation_location == province)
 
     # Blood Group
     if blood_group:
-        df = df[
-            df["blood_group"] == blood_group
-        ]
+        query = query.filter(BloodInventory.blood_group == blood_group)
 
-    # Product
+    # Product Type / Component ID
     if product_type:
-        df = df[
-            df["product_type"] == product_type
-        ]
+        query = query.filter(BloodInventory.component_id == product_type)
 
-    # RH
+    # RH Factor
     if rh:
-        df = df[
-            df["rh"] == rh
-        ]
+        query = query.filter(BloodInventory.rh_id == rh)
 
-    # Expiry
+    # Expiry Days
     if expiry_days:
-
-        today = datetime.today()
-
-        df["expiry_date"] = pd.to_datetime(
-            df["expiry_date"]
+        today = date.today()
+        target_date = today + timedelta(days=int(expiry_days))
+        query = query.filter(
+            BloodInventory.expiry_date.isnot(None),
+            BloodInventory.expiry_date <= target_date,
         )
 
-        df["days_left"] = (
-            df["expiry_date"] - today
-        ).dt.days
+    items = query.all()
+    return [item_to_dict(item) for item in items]
 
-        df = df[
-            df["days_left"]
-            <= int(expiry_days)
-        ]
 
-    return df.to_dict(
-        orient="records"
-    )
-    
-def add_blood(data):
+def add_blood(db: Session, data: dict):
+    """เพิ่มข้อมูลถุงเลือดใหม่ลงใน Supabase"""
+    # จัดการแปลงวันที่วันหมดอายุหากถูกส่งมาเป็น string
+    expiry_val = data.get("expiry_date")
+    if isinstance(expiry_val, str) and expiry_val:
+        expiry_val = datetime.strptime(expiry_val, "%Y-%m-%d").date()
 
-    df = pd.read_csv(CSV_PATH)
-
-    new_id = (
-        df["id"].max() + 1
-    )
-
-    data["id"] = new_id
-
-    df = pd.concat(
-        [
-            df,
-            pd.DataFrame([data])
-        ],
-        ignore_index=True
+    new_item = BloodInventory(
+        unit_no=data.get("unit_no", f"UNIT-{int(datetime.now().timestamp())}"),
+        blood_group=data.get("blood_group"),
+        rh_id=data.get("rh_id") or data.get("rh"),
+        status=data.get("status", "Available"),
+        donation_location=data.get("donation_location") or data.get("province"),
+        component_id=data.get("component_id") or data.get("product_type"),
+        patient_hn=data.get("patient_hn"),
+        recipient_name=data.get("recipient_name"),
+        expiry_date=expiry_val,
+        hospital_id=data.get("hospital_id"),
+        user_id=data.get("user_id"),
     )
 
-    df.to_csv(
-        CSV_PATH,
-        index=False
-    )
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
 
-    return {
-        "message": "Blood added"
-    }
+    return {"message": "Blood added", "data": item_to_dict(new_item)}
 
 
-def delete_blood(
-    blood_id
-):
+def delete_blood(db: Session, blood_id: int):
+    """ลบข้อมูลถุงเลือดจาก Supabase ตาม ID"""
+    item = db.query(BloodInventory).filter(BloodInventory.inventory_id == blood_id).first()
 
-    df = pd.read_csv(CSV_PATH)
+    if not item:
+        return {"message": "Blood item not found"}
 
-    df = df[
-        df["id"] != blood_id
-    ]
+    db.delete(item)
+    db.commit()
 
-    df.to_csv(
-        CSV_PATH,
-        index=False
-    )
+    return {"message": "Blood deleted"}
 
-    return {
-        "message": "Blood deleted"
-    }
 
-import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-from datetime import datetime, timedelta
-import os
-
-def predict_blood_demand():
-    # กำหนดที่อยู่ของไฟล์ข้อมูล
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    csv_path = os.path.join(base_dir, 'data', 'blood.csv')
-    
-    blood_types = ['A', 'B', 'O', 'AB']
-    predictions = {}
-
-    try:
-        # โหลดข้อมูลจริง หากไฟล์มีอยู่
-        # df = pd.read_csv(csv_path)
-        # กระบวนการ Feature Engineering (เช่น สกัด วัน, เดือน, วันในสัปดาห์ ออกมา) จะทำตรงนี้
-        pass
-    except FileNotFoundError:
-        print(f"Warning: CSV file not found at {csv_path}")
-
-    # --- ส่วนจำลองการพยากรณ์ (Mock Prediction) ---
-    # ในการใช้งานจริง คุณจะใช้ตัวแปร df ที่ผ่านการเตรียมข้อมูลแล้วมา train โมเดล
-    # ตัวอย่าง: model = RandomForestRegressor().fit(X_train, y_train)
-    # y_pred = model.predict(X_next_7_days)
-    
-    # สมมติผลลัพธ์ที่ได้จากโมเดล (หน่วยเป็นยูนิต)
+def predict_blood_demand(db: Session = None):
+    """พยากรณ์ความต้องการใช้เลือด (ดึงจาก DB หรือ Mock Data)"""
     predictions = [
         {"blood_type": "A", "predicted_demand": 45, "status": "safe"},
         {"blood_type": "B", "predicted_demand": 30, "status": "warning"},
         {"blood_type": "O", "predicted_demand": 80, "status": "critical"},
-        {"blood_type": "AB", "predicted_demand": 15, "status": "safe"}
+        {"blood_type": "AB", "predicted_demand": 15, "status": "safe"},
     ]
-
     return predictions
 
-# ฟังก์ชันสำหรับเตรียมข้อมูล Time Series สำหรับการพยากรณ์
+
 def prepare_hospital_level_data(df):
-    # แปลง RecordDate ให้เป็นชนิดข้อมูล datetime
-    df['RecordDate'] = pd.to_datetime(df['RecordDate'])
-    
-    # กรองเฉพาะข้อมูลสถานะ Release (ใช้งาน/จ่าย)
-    demand_df = df[df['Status'] == 'Release'].copy()
-    
-    # เพิ่ม HospitalID เข้าไปในการจัดกลุ่ม
-    daily_demand = demand_df.groupby(
-        ['HospitalID', 'RecordDate', 'BloodGroup', 'Rh']
-    ).size().reset_index(name='Demand_Units')
-    
-    # สร้าง Feature พื้นฐานสำหรับ Time-Series
-    daily_demand['DayOfWeek'] = daily_demand['RecordDate'].dt.dayofweek
-    daily_demand['Month'] = daily_demand['RecordDate'].dt.month
-    daily_demand['IsWeekend'] = daily_demand['DayOfWeek'].apply(lambda x: 1 if x >= 5 else 0)
-    
+    """ฟังก์ชันเตรียมข้อมูล Time Series สำหรับโมเดล ML (ยังคงไว้ตามเดิม)"""
+    df["RecordDate"] = pd.to_datetime(df["RecordDate"])
+    demand_df = df[df["Status"] == "Release"].copy()
+
+    daily_demand = (
+        demand_df.groupby(["HospitalID", "RecordDate", "BloodGroup", "Rh"])
+        .size()
+        .reset_index(name="Demand_Units")
+    )
+
+    daily_demand["DayOfWeek"] = daily_demand["RecordDate"].dt.dayofweek
+    daily_demand["Month"] = daily_demand["RecordDate"].dt.month
+    daily_demand["IsWeekend"] = daily_demand["DayOfWeek"].apply(
+        lambda x: 1 if x >= 5 else 0
+    )
+
     return daily_demand

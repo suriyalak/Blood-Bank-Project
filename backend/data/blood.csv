@@ -1,6 +1,0 @@
-﻿id,hospital_name,hospital_code,blood_bag,blood_group,rh,status,product_type,province,district,subdistrict,expiry_date
-1,Chiang Rai Hospital,CR001,BG1001,A,+,Available,PRC,Chiang Rai,Mueang,Rop Wiang,2026-06-20
-2,Bangkok Hospital,BK002,BG1002,B,-,Released,FFP,Bangkok,Bang Rak,Si Phraya,2026-06-08
-3,Chiang Mai Hospital,CM003,BG1003,O,+,Booking,WB,Chiang Mai,Mueang,Suthep,2026-06-15
-4,Nan Hospital,NN004,BG1004,AB,-,Expired,LPRC,Nan,Mueang,Nai Wiang,2026-06-01
-5,Phayao Hospital,PY005,BG1005,A,+,Ready To Issue,PC,Phayao,Mueang,Wiang,2026-06-11

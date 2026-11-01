@@ -1,0 +1,14 @@
+# Environment variables (รหัสผ่าน DB)
+.env
+*.env
+backend/.env
+frontend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+.venv/
+
+# Node / Frontend
+node_modules/
+dist/
